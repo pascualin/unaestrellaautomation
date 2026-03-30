@@ -1,0 +1,4 @@
+boto3
+google-auth-oauthlib
+requests
+pytest
