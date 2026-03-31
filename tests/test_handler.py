@@ -2,7 +2,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from handler import AlreadyProcessedError, ValidationError, _enforce_idempotency, _validate_grabacion
+from handler import (
+    AlreadyProcessedError,
+    ValidationError,
+    _enforce_idempotency,
+    _normalize_fecha_grabacion,
+    _validate_grabacion,
+)
 
 
 def _grabacion(**overrides):
@@ -52,9 +58,8 @@ def test_validate_grabacion_rejects_non_consecutive_episode_numbers() -> None:
         _validate_grabacion(_grabacion(numero_episodio_2=40))
 
 
-def test_validate_grabacion_requires_datetime_not_just_date() -> None:
-    with pytest.raises(ValidationError, match="Fecha de grabación must include date and time"):
-        _validate_grabacion(_grabacion(fecha_grabacion="2026-04-04"))
+def test_normalize_fecha_grabacion_adds_default_madrid_time() -> None:
+    assert _normalize_fecha_grabacion("2026-04-04") == "2026-04-04T20:00:00+02:00"
 
 
 @pytest.mark.parametrize(

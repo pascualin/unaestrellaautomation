@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import date, datetime, time
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from naming import (
     build_calendar_title,
@@ -12,6 +14,9 @@ from naming import (
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+DEFAULT_RECORDING_TIMEZONE = ZoneInfo("Europe/Madrid")
+DEFAULT_RECORDING_HOUR = 20
 
 
 class ValidationError(Exception):
@@ -90,6 +95,18 @@ def _build_notion_page_url(page_id: str) -> str:
     return f"https://www.notion.so/{page_id.replace('-', '')}"
 
 
+def _normalize_fecha_grabacion(value: str) -> str:
+    if "T" in value:
+        return value
+
+    parsed_date = date.fromisoformat(value)
+    normalized = datetime.combine(
+        parsed_date,
+        time(hour=DEFAULT_RECORDING_HOUR, minute=0, tzinfo=DEFAULT_RECORDING_TIMEZONE),
+    )
+    return normalized.isoformat()
+
+
 def _build_calendar_description(grabacion: Any) -> str:
     guest_names = [inv.name for inv in grabacion.invitados]
     guest_line = ", ".join(guest_names) if guest_names else "Sin invitados"
@@ -114,9 +131,6 @@ def _validate_grabacion(grabacion: Any) -> None:
     for is_valid, error_message in validations:
         if not is_valid:
             raise ValidationError(error_message)
-
-    if "T" not in str(grabacion.fecha_grabacion):
-        raise ValidationError("Fecha de grabación must include date and time")
 
     if grabacion.numero_episodio_2 != grabacion.numero_episodio_1 + 1:
         raise ValidationError("Número episodio 2 must equal Número episodio 1 + 1")
@@ -191,6 +205,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         _log_json("validation", {"page_id": grabacion.page_id})
         _validate_grabacion(grabacion)
+        grabacion.fecha_grabacion = _normalize_fecha_grabacion(grabacion.fecha_grabacion)
         _enforce_idempotency(grabacion)
 
         guest_names = [invitado.name for invitado in grabacion.invitados]
