@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -43,14 +43,16 @@ jobs:
           cp -R src/* dist/
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy Lambda code
-        uses: aws-actions/aws-lambda-deploy@v1.1.0
-        with:
-          function-name: ${{ env.FUNCTION_NAME }}
-          package-type: Zip
-          code-artifacts-dir: dist
+        run: |
+          cd dist
+          zip -r ../lambda.zip .
+          cd ..
+          aws lambda update-function-code \
+            --function-name "${FUNCTION_NAME}" \
+            --zip-file fileb://lambda.zip
