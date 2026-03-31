@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: eu-west-1
+  AWS_REGION: eu-west-2
   FUNCTION_NAME: una-estrella-automation
 
 jobs:
