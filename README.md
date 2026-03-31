@@ -57,10 +57,11 @@ PYTHONPATH=src pytest
 ## Deployment
 Deploy this project as a single Python AWS Lambda function exposed through a Lambda Function URL.
 
-The production implementation assumes:
+The deployed production implementation uses:
 - a 2-hour default Google Calendar event duration
+- a default start time of `20:00` in `Europe/Madrid` when `Fecha de grabación` contains only a date
 - `GOOGLE_CALENDAR_ID=primary`
-- all AWS resources live in the same region
+- AWS region `us-west-2`
 
 ## AWS setup checklist
 1. Create a Secrets Manager secret named `podcast/una-estrella/automation`.
@@ -85,24 +86,25 @@ The production implementation assumes:
    - Architecture: `x86_64`
    - Timeout: start with `30` seconds
 5. Add these environment variables to the Lambda:
-   - `NOTION_GRABACIONES_DS_ID=a064f802-b097-4c8e-b539-1fd5bafb736c`
-   - `NOTION_EPISODIOS_DS_ID=2a964f5c-cfab-819d-b6ef-000b18cffd7b`
-   - `NOTION_PROJECTS_DS_ID=4ab21bd1-d275-4d7d-b2bb-5147c64b8e2a`
-   - `NOTION_AREA_UNA_ESTRELLA_ID=31486d6f-ebef-4ef5-98e1-266912e15376`
-   - `GOOGLE_CALENDAR_ID=primary`
-   - `SECRETS_MANAGER_SECRET_NAME=podcast/una-estrella/automation`
-6. Enable a Lambda Function URL:
+   - `NOTION_GRABACIONES_DS_ID`
+   - `NOTION_EPISODIOS_DS_ID`
+   - `NOTION_PROJECTS_DS_ID`
+   - `NOTION_AREA_UNA_ESTRELLA_ID`
+   - `GOOGLE_CALENDAR_ID`
+   - `SECRETS_MANAGER_SECRET_NAME`
+6. Fill those values from your own Notion workspace and AWS secret configuration.
+7. Enable a Lambda Function URL:
    - Auth type: `NONE`
    - CORS: disabled unless you know you need it
-7. Create the Notion automation that sends a POST to the Function URL with:
+8. Create the Notion automation that sends a POST to the Function URL with:
    - Header: `x-webhook-secret`
    - Value: same value as `WEBHOOK_SHARED_SECRET`
-   - Body:
-```json
-{
-  "grabacion_page_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-}
+   - Content: select a formula property named `grabacion_page_id`
+9. In `Grabaciones`, add a formula property named `grabacion_page_id` with this formula:
+```text
+id()
 ```
+10. The Notion webhook payload is expected to include `data.properties.grabacion_page_id.formula.string`.
 
 ## GitHub Actions deployment setup
 1. Push this repository to GitHub.
@@ -141,7 +143,8 @@ The production implementation assumes:
       "Effect": "Allow",
       "Action": [
         "lambda:GetFunctionConfiguration",
-        "lambda:UpdateFunctionCode"
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration"
       ],
       "Resource": "arn:aws:lambda:<AWS_REGION>:<AWS_ACCOUNT_ID>:function:una-estrella-automation"
     }
@@ -150,7 +153,7 @@ The production implementation assumes:
 ```
 5. In GitHub repository settings, add this Actions secret:
    - `AWS_DEPLOY_ROLE_ARN=<the ARN of the deploy role>`
-6. If your Lambda is not in `eu-west-1` or is not named `una-estrella-automation`, update `.github/workflows/deploy.yml`.
+6. If your Lambda is not in `us-west-2` or is not named `una-estrella-automation`, update `.github/workflows/deploy.yml`.
 7. Push to `main` or run the workflow manually from the Actions tab.
 
 ## First deployment order
@@ -177,8 +180,9 @@ Lambda setup:
 - Runtime: Python 3.11 or newer
 - Handler: `handler.lambda_handler`
 - Function URL: enable and configure as the HTTPS webhook endpoint
-- Environment variables: set the six values from the requirements document
+- Environment variables: set the six values listed above
 - IAM role: allow `secretsmanager:GetSecretValue` and CloudWatch Logs writes
+- Region: `us-west-2`
 
 Update flow:
 ```bash
@@ -192,5 +196,6 @@ aws lambda update-function-code \
 - Valid webhook with 1 guest adds the guest only to Episode 2
 - Valid webhook with 2 guests renders `A y B`
 - Valid webhook with 3+ guests uses compact calendar naming and full Project/Episode naming
+- Date-only `Fecha de grabación` defaults to `20:00` in Madrid time
 - Invalid webhook secret returns `401`
 - Repeated invocation does not create duplicates
