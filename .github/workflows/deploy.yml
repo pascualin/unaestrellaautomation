@@ -37,12 +37,10 @@ jobs:
 
       - name: Build Lambda zip
         run: |
-          rm -rf dist lambda.zip
+          rm -rf dist
           mkdir -p dist
           python -m pip install -r requirements.txt -t dist
           cp -R src/* dist/
-          cd dist
-          zip -r ../lambda.zip .
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -54,4 +52,5 @@ jobs:
         uses: aws-actions/aws-lambda-deploy@v1.1.0
         with:
           function-name: ${{ env.FUNCTION_NAME }}
-          zip-file: lambda.zip
+          package-type: Zip
+          code-artifacts-dir: dist
