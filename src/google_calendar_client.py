@@ -9,6 +9,7 @@ import requests
 GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_CALENDAR_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events"
 DEFAULT_EVENT_DURATION_HOURS = 2
+DEFAULT_EVENT_ATTENDEE_EMAILS = ["cmilender@gmail.com"]
 
 
 @dataclass
@@ -62,13 +63,13 @@ class GoogleCalendarClient:
         response = self.session.post(
             GOOGLE_CALENDAR_EVENTS_URL.format(calendar_id=calendar_id),
             headers={"Authorization": f"Bearer {access_token}"},
-            json={
-                "summary": summary,
-                "location": location,
-                "description": description,
-                "start": {"dateTime": _serialize_datetime(start)},
-                "end": {"dateTime": _serialize_datetime(end)},
-            },
+            json=_build_event_payload(
+                summary=summary,
+                start=start,
+                end=end,
+                location=location,
+                description=description,
+            ),
             timeout=30,
         )
         response.raise_for_status()
@@ -86,3 +87,20 @@ def _parse_iso_datetime(value: str) -> datetime:
 
 def _serialize_datetime(value: datetime) -> str:
     return value.isoformat()
+
+
+def _build_event_payload(
+    summary: str,
+    start: datetime,
+    end: datetime,
+    location: str,
+    description: str,
+) -> dict:
+    return {
+        "summary": summary,
+        "location": location,
+        "description": description,
+        "start": {"dateTime": _serialize_datetime(start)},
+        "end": {"dateTime": _serialize_datetime(end)},
+        "attendees": [{"email": email} for email in DEFAULT_EVENT_ATTENDEE_EMAILS],
+    }
