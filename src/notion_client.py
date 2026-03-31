@@ -7,6 +7,7 @@ import requests
 
 
 NOTION_API_VERSION = "2022-06-28"
+EPISODIO_TEMPLATE_ID = "2a964f5c-cfab-81ce-90a3-e6bac70da6bc"
 
 
 @dataclass
@@ -61,13 +62,18 @@ class NotionClient:
         self,
         parent_database_id: str,
         properties: dict[str, Any],
+        template: dict[str, Any] | None = None,
     ) -> CreatedPageData:
+        payload = {
+            "parent": {"database_id": parent_database_id},
+            "properties": properties,
+        }
+        if template is not None:
+            payload["template"] = template
+
         response = self.session.post(
             "https://api.notion.com/v1/pages",
-            json={
-                "parent": {"database_id": parent_database_id},
-                "properties": properties,
-            },
+            json=payload,
             timeout=30,
         )
         response.raise_for_status()
@@ -143,7 +149,9 @@ class NotionClient:
                 "Name": self._title_value(title),
                 "Areas": self._relation_value([area_page_id]),
                 "Due Date": self._date_value(due_date),
+                "Scope": self._select_value("personal"),
             },
+            template={"type": "default"},
         )
 
     def create_episode(
@@ -165,6 +173,7 @@ class NotionClient:
         return self.create_page(
             parent_database_id=episodes_database_id,
             properties=properties,
+            template={"type": "template_id", "template_id": EPISODIO_TEMPLATE_ID},
         )
 
     def update_grabacion_success(
