@@ -21,4 +21,4 @@ def test_create_project_sets_status_open() -> None:
     )
 
     assert page.page_id == "project-page-id"
-    assert captured["properties"]["Status"] == {"status": {"name": "open"}}
+    assert captured["properties"]["Status"] == {"status": {"name": "Open"}}

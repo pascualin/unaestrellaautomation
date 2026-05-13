@@ -150,7 +150,7 @@ class NotionClient:
                 "Areas": self._relation_value([area_page_id]),
                 "Due Date": self._date_value(due_date),
                 "Scope": self._select_value("personal"),
-                "Status": {"status": {"name": "open"}},
+                "Status": {"status": {"name": "Open"}},
             },
             template={"type": "default"},
         )
