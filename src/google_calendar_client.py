@@ -12,6 +12,10 @@ DEFAULT_EVENT_DURATION_HOURS = 2
 DEFAULT_EVENT_ATTENDEE_EMAILS = ["cmilender@gmail.com"]
 
 
+class GoogleOAuthError(RuntimeError):
+    """Raised when Google rejects the OAuth refresh-token exchange."""
+
+
 @dataclass
 class CalendarEventData:
     event_id: str
@@ -41,7 +45,8 @@ class GoogleCalendarClient:
             },
             timeout=30,
         )
-        response.raise_for_status()
+        if not response.ok:
+            raise GoogleOAuthError(_format_oauth_error(response))
         data = response.json()
         access_token = data.get("access_token")
         if not access_token:
@@ -83,6 +88,26 @@ class GoogleCalendarClient:
 def _parse_iso_datetime(value: str) -> datetime:
     normalized = value.replace("Z", "+00:00")
     return datetime.fromisoformat(normalized)
+
+
+def _format_oauth_error(response: requests.Response) -> str:
+    try:
+        payload = response.json()
+    except ValueError:
+        details = response.text.strip()
+    else:
+        error = payload.get("error")
+        description = payload.get("error_description")
+        if error and description:
+            details = f"{error}: {description}"
+        elif error:
+            details = str(error)
+        else:
+            details = str(payload)
+
+    if details:
+        return f"Google OAuth token request failed ({response.status_code}): {details}"
+    return f"Google OAuth token request failed ({response.status_code})"
 
 
 def _serialize_datetime(value: datetime) -> str:

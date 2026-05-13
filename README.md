@@ -54,6 +54,29 @@ Run unit tests:
 PYTHONPATH=src pytest
 ```
 
+## Google OAuth refresh token
+The Lambda exchanges `GOOGLE_REFRESH_TOKEN` for an access token at
+`https://oauth2.googleapis.com/token`. A `400 Bad Request` from that endpoint
+usually means Google rejected one of the three OAuth secret values:
+
+- `invalid_client`: `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` do not belong
+  to the same OAuth client, the client secret was rotated, or the wrong OAuth
+  client type was used.
+- `invalid_grant`: `GOOGLE_REFRESH_TOKEN` was revoked or expired, was generated
+  for a different client ID, or the OAuth consent app is still in a test mode
+  where refresh tokens can expire.
+- `unauthorized_client`: the OAuth client is not allowed to use refresh-token
+  grants.
+
+To generate a fresh token, download the OAuth client JSON as `client_secret.json`
+and run:
+```bash
+python3 get_refresh_token.py
+```
+
+Store the printed refresh token in Secrets Manager as `GOOGLE_REFRESH_TOKEN`
+together with the matching `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
 ## Deployment
 Deploy this project as a single Python AWS Lambda function exposed through a Lambda Function URL.
 
